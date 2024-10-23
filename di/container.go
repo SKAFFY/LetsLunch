@@ -5,7 +5,13 @@
 package di
 
 import (
+	"cmd/app/config"
+	gathering_place_repository "cmd/app/entities/gatheringPlace/repository"
+	meeting_repository "cmd/app/entities/meeting/repository"
+	user_repository "cmd/app/entities/user/repository"
 	"cmd/di/internal"
+	"context"
+	"net/http"
 	"sync"
 )
 
@@ -16,11 +22,16 @@ type Container struct {
 
 type Injector func(c *Container) error
 
-func NewContainer(injectors ...Injector) (*Container, error) {
+func NewContainer(
+	config config.Params,
+	injectors ...Injector,
+) (*Container, error) {
 	c := &Container{
 		mu: &sync.Mutex{},
 		c:  internal.NewContainer(),
 	}
+
+	c.c.SetConfig(config)
 
 	for _, inject := range injectors {
 		err := inject(c)
@@ -30,6 +41,43 @@ func NewContainer(injectors ...Injector) (*Container, error) {
 	}
 
 	return c, nil
+}
+
+func (c *Container) Server(ctx context.Context) (*http.Server, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	s := c.c.Server(ctx)
+	err := c.c.Error()
+	if err != nil {
+		return nil, err
+	}
+
+	return s, err
+}
+
+func SetMeetingRepository(s meeting_repository.MeetingsRepository) Injector {
+	return func(c *Container) error {
+		c.c.Repositories().(*internal.RepositoryContainer).SetMeetingRepository(s)
+
+		return nil
+	}
+}
+
+func SetUserRepository(s user_repository.UsersRepository) Injector {
+	return func(c *Container) error {
+		c.c.Repositories().(*internal.RepositoryContainer).SetUserRepository(s)
+
+		return nil
+	}
+}
+
+func SetGatheringPlaceRepository(s gathering_place_repository.PlacesRepository) Injector {
+	return func(c *Container) error {
+		c.c.Repositories().(*internal.RepositoryContainer).SetGatheringPlaceRepository(s)
+
+		return nil
+	}
 }
 
 func (c *Container) Close() {

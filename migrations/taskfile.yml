@@ -1,11 +1,13 @@
 version: '3'
 
+dotenv: ['.env', '../.env', '{{.ENV}}/.env.', '{{.HOME}}/.env']
+
 tasks:
   up:
-    goose postgres ./foo.db up
+    goose postgres $DATABASE_URL up
 
   down:
-    goose postgres ./foo.db down
+    goose postgres $DATABASE_URL down
 
   status:
-    goose postgres ./foo.db status
+    goose postgres $DATABASE_URL status
